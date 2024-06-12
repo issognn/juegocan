@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Miel</title>
+    <style>
+        body {
+            background-color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+        #gameCanvas {
+            display: none;
+            border: 2px solid white;
+        }
+        .button-container {
+            text-align: center;
+        }
+        .button-container button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+        }
+        #salir {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="button-container">
+        <button id="modoRapidez">Modo Rapidez</button>
+        <button id="modoTiempo">Modo Tiempo</button>
+        <button id="salir">Salir</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+        var canvas = document.getElementById("gameCanvas");
+        var ctx = canvas.getContext("2d");
+
+        // Cargar las imágenes de los jugadores
+        var jugador1Img = new Image();
+        jugador1Img.src = "/per1.png";
+
+        var jugador2Img = new Image();
+        jugador2Img.src = "/per2.png";
+
+        // Cargar la imagen del tarro de miel
+        var tarroDeMielImg = new Image();
+        tarroDeMielImg.src = "/miel.png";
+
+        // Cargar la imagen de fondo
+        var fondoImg = new Image();
+        fondoImg.src = "/fondo.gif"; // Cambia "/fondo.jpg" por la ruta de tu imagen de fondo
+
+        // Definir las variables del juego
+        var jugador1 = {
+            x: 50,
+            y: canvas.height / 2,
+            ancho: 100, // Doble del tamaño original
+            alto: 100, // Doble del tamaño original
+            imagen: jugador1Img,
+            puntuacion: 0
+        };
+
+        var jugador2 = {
+            x: canvas.width - 100,
+            y: canvas.height / 2,
+            ancho: 100, // Doble del tamaño original
+            alto: 100, // Doble del tamaño original
+            imagen: jugador2Img,
+            puntuacion: 0
+        };
+
+        var tarrosDeMiel = [];
+        var tiempoLimite = 30; // segundos
+        var tiempoRestante;
+        var juegoTerminado = false;
+        var modoRapidez = false;
+
+        var teclasPresionadas = {};
+
+        function dibujar() {
+            // Dibujar el fondo
+            ctx.drawImage(fondoImg, 0, 0, canvas.width, canvas.height);
+
+            // Dibujar jugadores
+            dibujarJugador(jugador1);
+            dibujarJugador(jugador2);
+
+            // Dibujar tarros de miel y detectar colisiones
+            for (var i = 0; i < tarrosDeMiel.length; i++) {
+                var tarro = tarrosDeMiel[i];
+                ctx.drawImage(tarroDeMielImg, tarro.x, tarro.y, tarro.ancho, tarro.alto);
+
+                // Detectar colisiones con los jugadores
+                var jugador1X = jugador1.x + jugador1.ancho / 2;
+                var jugador1Y = jugador1.y + jugador1.alto / 2;
+                var jugador2X = jugador2.x + jugador2.ancho / 2;
+                var jugador2Y = jugador2.y + jugador2.alto / 2;
+                var tarroX = tarro.x + tarro.ancho / 2;
+                var tarroY = tarro.y + tarro.alto / 2;
+
+                var distanciaJugador1 = Math.sqrt(Math.pow(jugador1X - tarroX, 2) + Math.pow(jugador1Y - tarroY, 2));
+                var distanciaJugador2 = Math.sqrt(Math.pow(jugador2X - tarroX, 2) + Math.pow(jugador2Y - tarroY, 2));
+
+                var sumaRadios = (jugador1.ancho + tarro.ancho) / 4;
+
+                if (distanciaJugador1 <= sumaRadios) {
+                    jugador1.puntuacion++;
+                    tarrosDeMiel.splice(i, 1);
+                    i--;
+                    if (modoRapidez && jugador1.puntuacion >= 20) {
+                        juegoTerminado = true;
+                        alert("¡Jugador 1 gana!");
+                        mostrarBotonSalir();
+                        return;
+                    }
+                }
+
+                if (distanciaJugador2 <= sumaRadios) {
+                    jugador2.puntuacion++;
+                    tarrosDeMiel.splice(i, 1);
+                    i--;
+                    if (modoRapidez && jugador2.puntuacion >= 20) {
+                        juegoTerminado = true;
+                        alert("¡Jugador 2 gana!");
+                        mostrarBotonSalir();
+                        return;
+                    }
+                }
+            }
+
+            // Mostrar puntuaciones y tiempo restante
+            ctx.font = "20px Arial";
+            ctx.fillStyle = "black";
+            ctx.fillText("Jugador 1: " + jugador1.puntuacion, 20, 30);
+            ctx.fillText("Jugador 2: " + jugador2.puntuacion, canvas.width - 180, 30);
+            if (!modoRapidez) {
+                ctx.fillText("Tiempo: " + tiempoRestante + "s", canvas.width / 2 - 50, 30);
+            }
+
+            // Si el juego no ha terminado, continuar actualizando
+            if (!juegoTerminado) {
+                requestAnimationFrame(dibujar);
+            }
+        }
+
+        function dibujarJugador(jugador) {
+            ctx.drawImage(jugador.imagen, jugador.x, jugador.y, jugador.ancho, jugador.alto);
+        }
+
+        function generarTarroDeMiel() {
+            var tarro = {
+                x: Math.random() * (canvas.width - 50),
+                y: Math.random() * (canvas.height - 50),
+                ancho: 50, // Aumenta el tamaño del tarro de miel
+                alto: 50 // Aumenta el tamaño del tarro de miel
+            };
+            tarrosDeMiel.push(tarro);
+        }
+
+        function actualizar() {
+    if (!modoRapidez) {
+        tiempoRestante--;
+        if (tiempoRestante <= 0) {
+            juegoTerminado = true;
+            alert("¡Tiempo agotado! Juego terminado.");
+            if (jugador1.puntuacion > jugador2.puntuacion) {
+                alert("¡Jugador 1 gana!");
+            } else if (jugador1.puntuacion < jugador2.puntuacion) {
+                alert("¡Jugador 2 gana!");
+            } else {
+                alert("¡Empate!");
+            }
+            mostrarBotonSalir();
+            return;
+        }
+    }
+    generarTarroDeMiel();
+    if (!juegoTerminado) {
+        setTimeout(actualizar, 1000); // Continuar actualizando cada segundo
+    }
+}
+
+// Al finalizar el juego, mostrar el botón "Salir"
+if (juegoTerminado) {
+    mostrarBotonSalir();
+}
+
+        function manejarTeclas(event) {
+            teclasPresionadas[event.keyCode] = event.type === 'keydown';
+        }
+
+        function moverJugadores() {
+            var velocidad = 5; // Reducir la velocidad de movimiento
+
+            if (teclasPresionadas[87] && jugador1.y > 0) { // W
+                jugador1.y -= velocidad;
+            }
+            if (teclasPresionadas[83] && jugador1.y + jugador1.alto < canvas.height) { // S
+                jugador1.y += velocidad;
+            }
+            if (teclasPresionadas[65] && jugador1.x > 0) { // A
+                jugador1.x -= velocidad;
+            }
+            if (teclasPresionadas[68] && jugador1.x + jugador1.ancho < canvas.width) { // D
+                jugador1.x += velocidad;
+            }
+
+            if (teclasPresionadas[38] && jugador2.y > 0) { // Flecha arriba
+                jugador2.y -= velocidad;
+            }
+            if (teclasPresionadas[40] && jugador2.y + jugador2.alto < canvas.height) { // Flecha abajo
+                jugador2.y += velocidad;
+            }
+            if (teclasPresionadas[37] && jugador2.x > 0) { // Flecha izquierda
+                jugador2.x -= velocidad;
+            }
+            if (teclasPresionadas[39] && jugador2.x + jugador2.ancho < canvas.width) { // Flecha derecha
+                jugador2.x += velocidad;
+            }
+
+            if (!juegoTerminado) {
+                requestAnimationFrame(moverJugadores);
+            }
+        }
+
+        function iniciarJuego(modo) {
+            // Ocultar botones y mostrar canvas
+            document.querySelector('.button-container').style.display = 'none';
+            canvas.style.display = 'block';
+
+            // Inicializar variables del juego
+            juegoTerminado = false;
+            modoRapidez = (modo === 'rapidez');
+            tiempoRestante = tiempoLimite;
+            jugador1.puntuacion = 0;
+            jugador2.puntuacion = 0;
+            tarrosDeMiel = [];
+
+            // Iniciar funciones del juego
+            dibujar();
+            moverJugadores();
+            actualizar();
+        }
+
+        function mostrarBotonSalir() {
+            document.getElementById('salir').style.display = 'block';
+        }
+
+        document.getElementById('modoRapidez').addEventListener('click', function() {
+            iniciarJuego('rapidez');
+        });
+
+        document.getElementById('modoTiempo').addEventListener('click', function() {
+            iniciarJuego('tiempo');
+        });
+
+        document.getElementById('salir').addEventListener('click', function() {
+            // Regresar al menú inicial
+            canvas.style.display = 'none';
+            document.getElementById('salir').style.display = 'none';
+            document.querySelector('.button-container').style.display = 'flex';
+        });
+
+        document.addEventListener('keydown', manejarTeclas);
+        document.addEventListener('keyup', manejarTeclas);
+    </script>
+</body>
+</html>
